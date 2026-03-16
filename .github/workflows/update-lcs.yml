@@ -1,0 +1,35 @@
+name: Update LCS JSON
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch LCS data
+        run: |
+          curl -s "https://2025.epusluh.id/api/v1/lcs?url=%2Flcs&page=1&per_page=10" > data.json
+
+      - name: Convert to simple JSON
+        run: |
+          node -e "
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('data.json'));
+          const list=(d.data||[]).map(x=>x.id+' '+(x.title||x.caption||''));
+          fs.writeFileSync('lcs.json',JSON.stringify({lcs:list},null,2));
+          "
+
+      - name: Commit update
+        run: |
+          git config user.name 'github-actions'
+          git config user.email 'actions@github.com'
+          git add lcs.json
+          git commit -m 'Auto update LCS' || echo 'No changes'
+          git push
